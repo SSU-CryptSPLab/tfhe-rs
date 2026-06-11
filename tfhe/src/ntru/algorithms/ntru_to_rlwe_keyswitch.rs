@@ -2,7 +2,6 @@ use crate::core_crypto::commons::computation_buffers::ComputationBuffers;
 use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::commons::parameters::*;
 use crate::core_crypto::commons::math::decomposition::SignedDecomposer;
-use crate::core_crypto::commons::utils::izip;
 use crate::core_crypto::algorithms::slice_algorithms::slice_wrapping_scalar_mul_assign;
 use crate::core_crypto::entities::*;
 use crate::core_crypto::fft_impl::fft64::crypto::ggsw::{collect_next_term, update_with_fmadd};
@@ -11,7 +10,7 @@ use crate::core_crypto::fft_impl::fft64::math::fft::{Fft, FftView};
 use crate::core_crypto::fft_impl::fft64::math::polynomial::FourierPolynomialMutView;
 use crate::ntru::entities::*;
 use aligned_vec::CACHELINE_ALIGN;
-use dyn_stack::{PodStack, SizeOverflow, StackReq};
+use dyn_stack::{PodStack, StackReq};
 use tfhe_fft::c64;
 
 pub fn convert_standard_ntru_to_rlwe_keyswitch_key_to_fourier<Scalar, InputCont, OutputCont>(
@@ -43,7 +42,6 @@ pub fn convert_standard_ntru_to_rlwe_keyswitch_key_to_fourier<Scalar, InputCont,
     let mut buffers = ComputationBuffers::new();
     buffers.resize(
         convert_standard_ntru_to_rlwe_keyswitch_key_to_fourier_mem_optimized_requirement(fft)
-            .unwrap()
             .unaligned_bytes_required(),
     );
     let stack = buffers.stack();
@@ -58,7 +56,7 @@ pub fn convert_standard_ntru_to_rlwe_keyswitch_key_to_fourier<Scalar, InputCont,
 
 pub fn convert_standard_ntru_to_rlwe_keyswitch_key_to_fourier_mem_optimized_requirement(
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
+) -> StackReq {
     fft.forward_scratch()
 }
 
@@ -80,21 +78,21 @@ pub fn convert_standard_ntru_to_rlwe_keyswitch_key_to_fourier_mem_optimized<Scal
 pub fn keyswitch_ntru_to_rlwe_scratch<Scalar>(
     polynomial_size: PolynomialSize,
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
+) -> StackReq {
     let fourier_polynomial_size = polynomial_size.to_fourier_polynomial_size().0;
-    let standard_scratch = StackReq::try_new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN)?;
+    let standard_scratch = StackReq::new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN);
     let fourier_scratch
-        = StackReq::try_new_aligned::<c64>(2 * fourier_polynomial_size, CACHELINE_ALIGN)?;
-    let fourier_scratch_single = StackReq::try_new_aligned::<c64>(fourier_polynomial_size, CACHELINE_ALIGN)?;
+        = StackReq::new_aligned::<c64>(2 * fourier_polynomial_size, CACHELINE_ALIGN);
+    let fourier_scratch_single = StackReq::new_aligned::<c64>(fourier_polynomial_size, CACHELINE_ALIGN);
 
-    let substack3 = fft.forward_scratch()?;
-    let substack2 = substack3.try_and(fourier_scratch_single)?;
-    let substack1 = substack2.try_and(standard_scratch)?;
-    let substack0 = StackReq::try_any_of([
-        substack1.try_and(standard_scratch)?,
-        fft.backward_scratch()?,
-    ])?;
-    substack0.try_and(fourier_scratch)
+    let substack3 = fft.forward_scratch();
+    let substack2 = substack3.and(fourier_scratch_single);
+    let substack1 = substack2.and(standard_scratch);
+    let substack0 = StackReq::any_of(&[
+        substack1.and(standard_scratch),
+        fft.backward_scratch(),
+    ]);
+    substack0.and(fourier_scratch)
 }
 
 pub fn keyswitch_ntru_to_rlwe<Scalar, KskCont, InputCont, OutputCont>(
@@ -118,7 +116,6 @@ pub fn keyswitch_ntru_to_rlwe<Scalar, KskCont, InputCont, OutputCont>(
             polynomial_size,
             fft,
         )
-        .unwrap()
         .unaligned_bytes_required(),
     );
     let stack = buffers.stack();
@@ -259,7 +256,7 @@ fn add_keyswitch_split_external_product_assign<Scalar>(
     }
 
     if !is_output_uninit {
-        izip!(
+        itertools::izip!(
             output.as_mut_polynomial_list().iter_mut(),
             output_fft_buffer
                 .into_chunks(fourier_poly_size)

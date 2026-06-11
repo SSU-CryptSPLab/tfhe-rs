@@ -104,7 +104,7 @@ where
         .cast_into()
     }
 
-    fn mask(&self) -> impl Iterator<Item = SwitchedScalar> {
+    fn mask(&self) -> impl ExactSizeIterator<Item = SwitchedScalar> {
         self.lwe_in
             .as_ref()
             .split_last()

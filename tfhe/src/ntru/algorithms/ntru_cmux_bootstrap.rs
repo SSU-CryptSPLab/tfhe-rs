@@ -12,7 +12,7 @@ use crate::ntru::entities::*;
 use crate::ntru::algorithms::*;
 
 use aligned_vec::CACHELINE_ALIGN;
-use dyn_stack::{PodStack, SizeOverflow, StackReq};
+use dyn_stack::{PodStack, StackReq};
 use tfhe_fft::c64;
 
 pub fn convert_standard_ntru_cmux_bootstrap_key_to_fourier<Scalar, InputCont, OutputCont>(
@@ -40,7 +40,6 @@ pub fn convert_standard_ntru_cmux_bootstrap_key_to_fourier<Scalar, InputCont, Ou
     let mut buffers = ComputationBuffers::new();
     buffers.resize(
         convert_standard_ntru_cmux_bootstrap_key_to_fourier_mem_optimized_requirement(fft)
-            .unwrap()
             .unaligned_bytes_required(),
     );
     let stack = buffers.stack();
@@ -55,7 +54,7 @@ pub fn convert_standard_ntru_cmux_bootstrap_key_to_fourier<Scalar, InputCont, Ou
 
 pub fn convert_standard_ntru_cmux_bootstrap_key_to_fourier_mem_optimized_requirement(
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
+) -> StackReq {
     convert_standard_ngsw_ciphertext_to_fourier_mem_optimized_requirement(fft)
 }
 
@@ -125,7 +124,6 @@ pub fn ntru_cmux_bootstrap_lwe_ciphertext<
             PolynomialSize(accumulator.plaintext_count().0),
             fft,
         )
-        .unwrap()
         .unaligned_bytes_required(),
     );
 
@@ -144,22 +142,20 @@ pub fn ntru_cmux_bootstrap_lwe_ciphertext<
 pub fn ntru_cmux_bootstrap_scratch<Scalar>(
     polynomial_size: PolynomialSize,
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
-    ntru_cmux_blind_rotate_assign_scratch::<Scalar>(polynomial_size, fft)?
-        .try_and(StackReq::try_new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN)?,
-    )
+) -> StackReq {
+    ntru_cmux_blind_rotate_assign_scratch::<Scalar>(polynomial_size, fft)
+        .and(StackReq::new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN))
 }
-
 pub fn ntru_cmux_blind_rotate_assign_scratch<Scalar>(
     polynomial_size: PolynomialSize,
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
-    StackReq::try_any_of([
-        StackReq::try_new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN)?,
-        StackReq::try_all_of([
-            StackReq::try_new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN)?,
-            add_ntru_external_product_assign_scratch::<Scalar>(polynomial_size, fft)?,
-        ])?,
+) -> StackReq {
+    StackReq::any_of(&[
+        StackReq::new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN),
+        StackReq::all_of(&[
+            StackReq::new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN),
+            add_ntru_external_product_assign_scratch::<Scalar>(polynomial_size, fft),
+        ]),
     ])
 }
 
@@ -311,7 +307,6 @@ pub fn ntru_cmux_bootstrap_lwe_ciphertext_lut_many<
             PolynomialSize(accumulator.plaintext_count().0),
             fft,
         )
-        .unwrap()
         .unaligned_bytes_required(),
     );
 

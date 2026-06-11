@@ -8,27 +8,27 @@ use crate::core_crypto::fft_impl::fft64::math::fft::FftView;
 use crate::core_crypto::fft_impl::fft64::math::polynomial::FourierPolynomialMutView;
 use crate::ntru::entities::*;
 use aligned_vec::CACHELINE_ALIGN;
-use dyn_stack::{PodStack, SizeOverflow, StackReq};
+use dyn_stack::{PodStack, StackReq};
 use tfhe_fft::c64;
 
 pub fn add_ntru_external_product_assign_scratch<Scalar>(
     polynomial_size: PolynomialSize,
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
-    let standard_scratch= StackReq::try_new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN)?;
+) -> StackReq {
+    let standard_scratch= StackReq::new_aligned::<Scalar>(polynomial_size.0, CACHELINE_ALIGN);
     let fourier_polynomial_size = polynomial_size.to_fourier_polynomial_size().0;
     let fourier_scratch
-        = StackReq::try_new_aligned::<c64>(fourier_polynomial_size, CACHELINE_ALIGN)?;
-    let fourier_scratch_single = StackReq::try_new_aligned::<c64>(fourier_polynomial_size, CACHELINE_ALIGN)?;
+        = StackReq::new_aligned::<c64>(fourier_polynomial_size, CACHELINE_ALIGN);
+    let fourier_scratch_single = StackReq::new_aligned::<c64>(fourier_polynomial_size, CACHELINE_ALIGN);
 
-    let substack3 = fft.forward_scratch()?;
-    let substack2 = substack3.try_and(fourier_scratch_single)?;
-    let substack1 = substack2.try_and(standard_scratch)?;
-    let substack0 = StackReq::try_any_of([
-        substack1.try_and(standard_scratch)?,
-        fft.backward_scratch()?,
-    ])?;
-    substack0.try_and(fourier_scratch)
+    let substack3 = fft.forward_scratch();
+    let substack2 = substack3.and(fourier_scratch_single);
+    let substack1 = substack2.and(standard_scratch);
+    let substack0 = StackReq::any_of(&[
+        substack1.and(standard_scratch),
+        fft.backward_scratch(),
+    ]);
+    substack0.and(fourier_scratch)
 }
 
 pub fn add_ntru_external_product_assign<Scalar>(

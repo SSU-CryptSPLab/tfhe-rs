@@ -3,7 +3,7 @@ use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::fft_impl::fft64::math::fft::{Fft, FftView};
 use crate::ntru::entities::*;
 use crate::ntru::algorithms::*;
-use dyn_stack::{PodStack, SizeOverflow, StackReq};
+use dyn_stack::{PodStack, StackReq};
 use tfhe_fft::c64;
 
 pub fn convert_standard_ntru_keyswitch_key_to_fourier<Scalar, InputCont, OutputCont>(
@@ -35,7 +35,6 @@ pub fn convert_standard_ntru_keyswitch_key_to_fourier<Scalar, InputCont, OutputC
     let mut buffers = ComputationBuffers::new();
     buffers.resize(
         convert_standard_ntru_keyswitch_key_to_fourier_mem_optimized_requirement(fft)
-            .unwrap()
             .unaligned_bytes_required(),
     );
     let stack = buffers.stack();
@@ -50,7 +49,7 @@ pub fn convert_standard_ntru_keyswitch_key_to_fourier<Scalar, InputCont, OutputC
 
 pub fn convert_standard_ntru_keyswitch_key_to_fourier_mem_optimized_requirement(
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
+) -> StackReq {
     convert_standard_ngsw_ciphertext_to_fourier_mem_optimized_requirement(fft)
 }
 
@@ -115,7 +114,6 @@ pub fn keyswitch_ntru_ciphertext<Scalar, KskCont, InputCont, OutputCont>(
             polynomial_size,
             fft,
         )
-        .unwrap()
         .unaligned_bytes_required(),
     );
     let stack = buffers.stack();

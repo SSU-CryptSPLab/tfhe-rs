@@ -6,7 +6,7 @@ use crate::core_crypto::entities::*;
 use crate::core_crypto::fft_impl::fft64::math::fft::{Fft, FftView};
 use crate::ntru::entities::*;
 use crate::ntru::algorithms::*;
-use dyn_stack::{PodStack, SizeOverflow, StackReq};
+use dyn_stack::{PodStack, StackReq};
 use tfhe_fft::c64;
 
 pub fn convert_standard_rlwe_scheme_switch_key_to_fourier<Scalar, InputCont, OutputCont>(
@@ -38,7 +38,6 @@ pub fn convert_standard_rlwe_scheme_switch_key_to_fourier<Scalar, InputCont, Out
     let mut buffers = ComputationBuffers::new();
     buffers.resize(
         convert_standard_rlwe_scheme_switch_key_to_fourier_mem_optimized_requirement(fft)
-            .unwrap()
             .unaligned_bytes_required(),
     );
     let stack = buffers.stack();
@@ -53,7 +52,7 @@ pub fn convert_standard_rlwe_scheme_switch_key_to_fourier<Scalar, InputCont, Out
 
 pub fn convert_standard_rlwe_scheme_switch_key_to_fourier_mem_optimized_requirement(
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
+) -> StackReq {
     fft.forward_scratch()
 }
 
@@ -96,7 +95,6 @@ pub fn scheme_switch_rlwe_ciphertext<Scalar, SSKeyCont, InputCont, OutputCont>(
             polynomial_size,
             fft,
         )
-        .unwrap()
         .unaligned_bytes_required(),
     );
     let stack = buffers.stack();
@@ -113,7 +111,7 @@ pub fn scheme_switch_rlwe_ciphertext<Scalar, SSKeyCont, InputCont, OutputCont>(
 pub fn scheme_switch_rlwe_ciphertext_scratch<Scalar>(
     polynomial_size: PolynomialSize,
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
+) -> StackReq {
     keyswitch_ntru_to_rlwe_scratch::<Scalar>(polynomial_size, fft)
 }
 

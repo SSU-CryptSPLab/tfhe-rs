@@ -7,7 +7,7 @@ use crate::core_crypto::prelude::polynomial_algorithms::polynomial_wrapping_moni
 use crate::ntru::entities::*;
 use crate::ntru::algorithms::*;
 
-use dyn_stack::{PodStack, SizeOverflow, StackReq};
+use dyn_stack::{PodStack, StackReq};
 use tfhe_fft::c64;
 
 pub fn convert_standard_ntru_cmux_circuit_bootstrap_key_to_fourier<Scalar, InputCont, OutputCont>(
@@ -35,7 +35,6 @@ pub fn convert_standard_ntru_cmux_circuit_bootstrap_key_to_fourier<Scalar, Input
     let mut buffers = ComputationBuffers::new();
     buffers.resize(
         convert_standard_ntru_cmux_circuit_bootstrap_key_to_fourier_mem_optimized_requirement(fft)
-            .unwrap()
             .unaligned_bytes_required(),
     );
     let stack = buffers.stack();
@@ -50,7 +49,7 @@ pub fn convert_standard_ntru_cmux_circuit_bootstrap_key_to_fourier<Scalar, Input
 
 pub fn convert_standard_ntru_cmux_circuit_bootstrap_key_to_fourier_mem_optimized_requirement(
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
+) -> StackReq {
     convert_standard_ngsw_ciphertext_to_fourier_mem_optimized_requirement(fft)
 }
 
@@ -125,7 +124,6 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext<
             output.decomposition_level_count(),
             fft,
         )
-        .unwrap()
         .unaligned_bytes_required(),
     );
 
@@ -145,16 +143,16 @@ pub fn ntru_cmux_circuit_bootstrap_lwe_ciphertext_scratch<Scalar>(
     polynomial_size: PolynomialSize,
     decomp_level_count: DecompositionLevelCount,
     fft: FftView<'_>,
-) -> Result<StackReq, SizeOverflow> {
-    StackReq::try_all_of([
-        StackReq::try_new::<Scalar>(polynomial_size.0 * decomp_level_count.0)?,
-        StackReq::try_new::<Scalar>(2 * polynomial_size.0)?,
-        StackReq::try_new::<Scalar>(polynomial_size.0)?,
-        StackReq::try_any_of([
-            ntru_cmux_blind_rotate_assign_scratch::<Scalar>(polynomial_size, fft)?,
+) -> StackReq {
+    StackReq::all_of(&[
+        StackReq::new::<Scalar>(polynomial_size.0 * decomp_level_count.0),
+        StackReq::new::<Scalar>(2 * polynomial_size.0),
+        StackReq::new::<Scalar>(polynomial_size.0),
+        StackReq::any_of(&[
+            ntru_cmux_blind_rotate_assign_scratch::<Scalar>(polynomial_size, fft),
             // trace
             // scheme_switch
-        ])?,
+        ]),
     ])
 }
 

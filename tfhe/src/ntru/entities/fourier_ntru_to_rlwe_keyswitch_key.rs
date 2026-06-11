@@ -1,7 +1,6 @@
 use crate::core_crypto::commons::traits::*;
 use crate::core_crypto::commons::parameters::*;
 use crate::core_crypto::commons::math::decomposition::DecompositionLevel;
-use crate::core_crypto::commons::utils::izip;
 use crate::core_crypto::entities::*;
 use crate::core_crypto::fft_impl::fft64::math::fft::{FftView, FourierPolynomialList};
 use crate::core_crypto::fft_impl::fft64::math::polynomial::FourierPolynomialMutView;
@@ -278,7 +277,7 @@ impl FourierNtruToRlweKeyswitchKeyMutView<'_> {
 
         match fft_type {
             FftType::Vanilla => {
-                for (fourier_poly, standard_poly) in izip!(
+                for (fourier_poly, standard_poly) in itertools::izip!(
                     self.data().into_chunks(fourier_poly_size),
                     standard_ntru_to_rlwe_ksk.as_polynomial_list().iter(),
                 ) {
@@ -293,7 +292,7 @@ impl FourierNtruToRlweKeyswitchKeyMutView<'_> {
                 self.data().split_into(fft_type.num_split())
                     .enumerate()
                     .for_each(|(split_idx, split_fourier)| {
-                        for (fourier_poly, standard_poly) in izip!(
+                        for (fourier_poly, standard_poly) in itertools::izip!(
                             split_fourier.into_chunks(fourier_poly_size),
                             standard_ntru_to_rlwe_ksk.as_polynomial_list().iter(),
                         ) {
